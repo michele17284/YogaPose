@@ -2,7 +2,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 from PIL import Image
-device = torch.device('cuda')
+from torch.utils.data import Dataset, DataLoader
+from torch import nn
+import os
+import torch
+
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #tpr = torch.hub.load('yangsenius/TransPose:main', 'tpr_a4_256x192', pretrained=True)
 tph = torch.hub.load('yangsenius/TransPose:main', 'tph_a4_256x192', pretrained=True, device=device)
 
@@ -48,7 +54,7 @@ dataset = YogaPoseDataset(DATASET_PATH)
 split_position = int((len(dataset)/10)*7)
 trainset = dataset[:split_position]
 testset = dataset[split_position:]
-
+print(trainset)
 
 
 
