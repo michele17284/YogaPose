@@ -77,6 +77,7 @@ class PoseClassifier(nn.Module):
         out = self.relu(out)
         out = self.fc2(out)
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
         return out
 
 X = np.array(dataset[:,1],dtype=float)
