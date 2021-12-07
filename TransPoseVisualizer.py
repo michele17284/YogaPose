@@ -125,4 +125,47 @@ print(trainset)
 batch = dataset.getX()[:32].to(device)
 print(batch.size(),dataset.getX().size())
 
-model(batch)
+from config import cfg
+from TransPose.lib.core.inference import get_final_preds
+from TransPose.lib.utils import transforms, vis
+
+with torch.no_grad():
+    model.eval()
+    tmp = []
+    tmp2 = []
+    img = dataset[0][0]
+
+    inputs = torch.cat([img.to(device)]).unsqueeze(0)
+    outputs = model(inputs)
+    if isinstance(outputs, list):
+        output = outputs[-1]
+    else:
+        output = outputs
+
+    if cfg.TEST.FLIP_TEST: 
+        input_flipped = np.flip(inputs.cpu().numpy(), 3).copy()
+        input_flipped = torch.from_numpy(input_flipped).cuda()
+        outputs_flipped = model(input_flipped)
+
+        if isinstance(outputs_flipped, list):
+            output_flipped = outputs_flipped[-1]
+        else:
+            output_flipped = outputs_flipped
+
+        output_flipped = transforms.flip_back(output_flipped.cpu().numpy(),
+                                   dataset.flip_pairs)
+        output_flipped = torch.from_numpy(output_flipped.copy()).cuda()
+
+        output = (output + output_flipped) * 0.5
+        
+    preds, maxvals = get_final_preds(
+            cfg, output.clone().cpu().numpy(), None, None, transform_back=False)
+
+# from heatmap_coord to original_image_coord
+query_locations = np.array([p*4+0.5 for p in preds[0]])
+print(query_locations)
+
+
+from TransPose.visualize import inspect_atten_map_by_locations
+
+inspect_atten_map_by_locations(img, model, query_locations, model_name="transposer", mode='dependency', save_img=True, threshold=0.0)
