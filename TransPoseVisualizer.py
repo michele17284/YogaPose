@@ -9,12 +9,14 @@ import torch
 import cv2
 import numpy as np
 
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device = torch.device("cpu")
 print(device)
 DATASET_PATH = './dataset/'
 positions = os.listdir(DATASET_PATH)
 images = list()
+
 
 def add_margin(pil_img, top, right, bottom, left, color):
     width, height = pil_img.size
@@ -26,86 +28,52 @@ def add_margin(pil_img, top, right, bottom, left, color):
 
 class YogaPoseDataset(Dataset):
 
-    def __init__(self, dataset_path):
+    def __init__(self, dataset_path, size=(256,192),transform=None):
         self.data_path = dataset_path
         # call to init the data
-        self.size = 256,192
+        self.size = size
+        self.transform = transform
+
+
+        
         self._init_data()
+
 
     def _init_data(self):
         positions = os.listdir(self.data_path)
         images = list()
         labels = list()
-        for idx, position in enumerate(positions):
-            for file in os.listdir(DATASET_PATH + position):
-                if not file.endswith('.gif'):
-                    f = cv2.imread(DATASET_PATH + position + '/' + file,cv2.IMREAD_COLOR)
+        for idx, directory_class in enumerate(os.listdir(DATASET_PATH)):
+            class_path = os.path.join(DATASET_PATH,directory_class) 
+            for file_name in os.listdir(class_path):
+                f = cv2.imread(os.path.join(class_path, file_name),cv2.IMREAD_COLOR)
+                if (self.transform != None): 
+                    f = self.transform(f)
+                data = torch.reshape(torch.FloatTensor(f).to(device),(3,self.size[0],self.size[1]))
+                images.append((idx,data))
+        #np.random.shuffle(images)
+        self.images = images
 
-                    #print(position + '/' + file)
-                    #print(f.shape)
-                    height,width, channels = f.shape
-                    if height > width:
-                        scale_percent = 256/height
-                        f = cv2.resize(f,(int(width*scale_percent),256))
-                        if f.shape[1] > 192:
-                            scale_percent = 192/width
-                            f = cv2.resize(f,(192,int(height*scale_percent)))
-                    else:
-                        scale_percent = 192/width
-                        f = cv2.resize(f,(192,int(height*scale_percent)))
-                        if f.shape[0] > 256:
-                            scale_percent = 256/height
-                            f = cv2.resize(f,(int(width*scale_percent),256))
-
-                    height,width, channels = f.shape
-                    #print(f.shape,"after resize")
-                    f = cv2.copyMakeBorder(f, 256-height, 0, 192-width, 0, cv2.BORDER_CONSTANT,value=0)
-                    #print(f.shape,"after padding")
-                    #if torch.FloatTensor(f.getdata()).size()[1] != 3: f.show()
-                    data = torch.reshape(torch.FloatTensor(f).to(device),(3,256,192))
-                    #print(data.shape)
-                    #print(data.size())
-                    images.append(data)
-                    labels.append(torch.tensor(idx))
-
-
-        #print(images)
-        images = torch.stack(images)
-        labels = torch.stack(labels)
-        #print(labels)
-        print(images.size())
-        mask = np.arange(labels.size()[0])
-        np.random.shuffle(mask)
-        #print(type(images),type(images[0]))
-        self.images = images[mask]
-        self.labels = labels[mask]
 
     def __len__(self):
         # returns the number of samples in our dataset
         return len(self.images)
 
-
-    def getX(self):
+    def getData(self):
         return self.images
-
-    def getY(self):
-        return self.labels
 
     def __getitem__(self, idx):
         # returns the idx-th sample
-        return self.images[idx],self.labels[idx]
+        return self.images[idx]
 
-# Custom implementation based on TransPose, not yet implemented nor utilized
-class MyTranspose(nn.Module):
-    def __init__(self):
-        super(MyTranspose, self).__init__()
+    def getOriginalImage(self, idx):
+        return torch.reshape(self.images[idx][1],(self.size[0],self.size[1], 3))
+    
+    def collate_fn(self,data):
+        Xs = torch.stack([x[1] for x in data])
+        y = torch.stack([torch.tensor(x[0]) for x in data])
+        return Xs,y
 
-        self.tph = torch.hub.load('yangsenius/TransPose:main', 'tph_a4_256x192', pretrained=True, device=device)
-
-    def forward(self, x):
-        x = x.to(device)
-        out = self.tph(x)
-        return out
 
 # get model from torch hub
 model_name = "tpr_a4_256x192"
@@ -115,57 +83,73 @@ modelyaml = {"tph_a4_256x192": "models_yaml/TP_H_w48_256x192_stage3_1_4_d96_h192
 
 model = torch.hub.load('yangsenius/TransPose:main', model_name, pretrained=True, force_reload=True, verbose=2)
 model.to(device)
-# print("model params:{:.3f}M".format(sum([p.numel() for p in model.parameters()])/1000**2))
-dataset = YogaPoseDataset(DATASET_PATH)
-split_position = int((len(dataset)/10)*7)
+
+
+norm_transform = T.Compose([T.ToTensor(),
+                                     T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+                                     ])
+
+
+dataset = YogaPoseDataset(DATASET_PATH, transform=norm_transform)
+split_position = int((len(dataset)//10)*7)
 trainset = dataset[:split_position]
 testset = dataset[split_position:]
-print(trainset)
 
-batch = dataset.getX()[:32].to(device)
-print(batch.size(),dataset.getX().size())
+image1 = dataset[0][1]
+image2 = torch.reshape(dataset.getOriginalImage(0),(3,256, 192))
 
-from config import cfg
-from TransPose.lib.core.inference import get_final_preds
-from TransPose.lib.utils import transforms, vis
+print(image1 - image2)
 
-with torch.no_grad():
-    model.eval()
-    tmp = []
-    tmp2 = []
-    img = dataset[0][0]
+#cv2.imwrite("./original_img.jpg", orimage)
 
-    inputs = torch.cat([img.to(device)]).unsqueeze(0)
-    outputs = model(inputs)
-    if isinstance(outputs, list):
-        output = outputs[-1]
-    else:
-        output = outputs
 
-    if cfg.TEST.FLIP_TEST: 
-        input_flipped = np.flip(inputs.cpu().numpy(), 3).copy()
-        input_flipped = torch.from_numpy(input_flipped).cuda()
-        outputs_flipped = model(input_flipped)
+def test(image):
+    from TransPose.lib.config import cfg
+    from TransPose.lib.core.inference import get_final_preds
+    from TransPose.lib.utils import transforms, vis
 
-        if isinstance(outputs_flipped, list):
-            output_flipped = outputs_flipped[-1]
-        else:
-            output_flipped = outputs_flipped
+    with torch.no_grad():
+        model.eval()
+        tmp = []
+        tmp2 = []
+        img = image
 
-        output_flipped = transforms.flip_back(output_flipped.cpu().numpy(),
-                                   dataset.flip_pairs)
-        output_flipped = torch.from_numpy(output_flipped.copy()).cuda()
-
-        output = (output + output_flipped) * 0.5
+        inputs = torch.cat([img.to(device)]).unsqueeze(0)
+        outputs = model(inputs)
         
-    preds, maxvals = get_final_preds(
+        if isinstance(outputs, list):
+            output = outputs[-1]
+        else:
+            output = outputs
+            
+        if cfg.TEST.FLIP_TEST: 
+            input_flipped = np.flip(inputs.cpu().numpy(), 3).copy()
+            input_flipped = torch.from_numpy(input_flipped).cuda()
+            outputs_flipped = model(input_flipped)
+
+            if isinstance(outputs_flipped, list):
+                output_flipped = outputs_flipped[-1]
+            else:
+                output_flipped = outputs_flipped
+
+            output_flipped = transforms.flip_back(output_flipped.cpu().numpy(),
+                                    dataset.flip_pairs)
+            output_flipped = torch.from_numpy(output_flipped.copy()).cuda()
+
+            output = (output + output_flipped) * 0.5
+            
+
+        preds, maxvals = get_final_preds(
             cfg, output.clone().cpu().numpy(), None, None, transform_back=False)
 
-# from heatmap_coord to original_image_coord
-query_locations = np.array([p*4+0.5 for p in preds[0]])
-print(query_locations)
+    # from heatmap_coord to original_image_coord
+    query_locations = np.array([p * 4 + 0.5 for p in preds[0]])
+    print(query_locations)
+
+    from TransPose.visualize import inspect_atten_map_by_locations
+
+    inspect_atten_map_by_locations(img, model, query_locations, model_name="transposer", mode='dependency', save_img=True,
+                                threshold=0.0)
 
 
-from TransPose.visualize import inspect_atten_map_by_locations
-
-inspect_atten_map_by_locations(img, model, query_locations, model_name="transposer", mode='dependency', save_img=True, threshold=0.0)
+#test(dataset[0][1])
