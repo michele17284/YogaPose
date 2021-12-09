@@ -126,6 +126,7 @@ def add_path(path):
 
 
 def inspect_atten_map_by_locations(
+    
     image,
     model,
     query_locations,
@@ -136,6 +137,7 @@ def inspect_atten_map_by_locations(
     kpt_color="white",
     img_name="image",
     save_img=False,
+    outinfo=None, 
 ):
     r"""
     Visualize the attention maps in all of attention layers
@@ -189,7 +191,7 @@ def inspect_atten_map_by_locations(
     down_rate = img_vis_kpts.shape[0] // shape[0]
     # query locations are at the coordinate frame of original image
     attn_map_pos = query_locations / down_rate
-
+    
     # random pos
     x1 = img_vis_kpts.shape[1] * torch.rand(1)
     y1 = img_vis_kpts.shape[0] * torch.rand(1)
@@ -200,7 +202,7 @@ def inspect_atten_map_by_locations(
     attn_map_pos = attn_map_pos.tolist()
     attn_map_pos.append(random_pt_1)
     attn_map_pos.append(random_pt_2)
-
+    
     fig, axs = plt.subplots(attn_layers_num, 20, figsize=(30, 8),)
     fig.subplots_adjust(
         bottom=0.07, right=0.97, top=0.98, left=0.03, wspace=0.00008, hspace=0.02,
@@ -258,5 +260,5 @@ def inspect_atten_map_by_locations(
     cb.set_ticks([0.0, 0.5, 1])
     cb.ax.tick_params(labelsize=20)
     if save_img:
-        plt.savefig("attention_map_{}_{}_{}.jpg".format(img_name, mode, model_name))
+        plt.savefig("{}{}_attention_map_{}_{}_{}.jpg".format(outinfo[0],outinfo[1], img_name, mode, model_name))
     plt.show()
