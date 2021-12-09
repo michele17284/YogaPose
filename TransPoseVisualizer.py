@@ -34,8 +34,6 @@ class YogaPoseDataset(Dataset):
         self.size = size
         self.transform = transform
 
-
-        
         self._init_data()
 
 
@@ -43,14 +41,17 @@ class YogaPoseDataset(Dataset):
         positions = os.listdir(self.data_path)
         images = list()
         labels = list()
-        for idx, directory_class in enumerate(os.listdir(DATASET_PATH)):
-            class_path = os.path.join(DATASET_PATH,directory_class) 
+        for _, directory_class in enumerate(os.listdir(self.data_path)):
+            class_path = os.path.join(self.data_path,directory_class) 
             for file_name in os.listdir(class_path):
+                classidx = int(directory_class)
                 f = cv2.imread(os.path.join(class_path, file_name),cv2.IMREAD_COLOR)
+                f = cv2.cvtColor(f, cv2.COLOR_BGR2RGB)
                 if (self.transform != None): 
                     f = self.transform(f)
                 data = torch.reshape(torch.FloatTensor(f).to(device),(3,self.size[0],self.size[1]))
-                images.append((idx,data))
+                # images[x] -> (class_id, image_tensor, filename)
+                images.append((classidx, data, file_name))
         #np.random.shuffle(images)
         self.images = images
 
@@ -67,7 +68,9 @@ class YogaPoseDataset(Dataset):
         return self.images[idx]
 
     def getOriginalImage(self, idx):
-        return torch.reshape(self.images[idx][1],(self.size[0],self.size[1], 3))
+        class_path = os.path.join(self.data_path,str(self.images[idx][0])) 
+        out = cv2.imread(os.path.join(class_path,str(self.images[idx][2])),cv2.IMREAD_COLOR)
+        return out
     
     def collate_fn(self,data):
         Xs = torch.stack([x[1] for x in data])
@@ -95,24 +98,18 @@ split_position = int((len(dataset)//10)*7)
 trainset = dataset[:split_position]
 testset = dataset[split_position:]
 
-image1 = dataset[0][1]
-image2 = torch.reshape(dataset.getOriginalImage(0),(3,256, 192))
 
-print(image1 - image2)
-
-#cv2.imwrite("./original_img.jpg", orimage)
-
-
-def test(image):
+def test(dataset, idx):
     from TransPose.lib.config import cfg
     from TransPose.lib.core.inference import get_final_preds
     from TransPose.lib.utils import transforms, vis
+    from TransPose.visualize import inspect_atten_map_by_locations
 
     with torch.no_grad():
         model.eval()
         tmp = []
         tmp2 = []
-        img = image
+        img = dataset[idx][1]
 
         inputs = torch.cat([img.to(device)]).unsqueeze(0)
         outputs = model(inputs)
@@ -144,12 +141,17 @@ def test(image):
 
     # from heatmap_coord to original_image_coord
     query_locations = np.array([p * 4 + 0.5 for p in preds[0]])
-    print(query_locations)
-
-    from TransPose.visualize import inspect_atten_map_by_locations
-
+    idx_name = dataset[idx][2]
+    print(idx_name)
+    out_dir = "./out/"
     inspect_atten_map_by_locations(img, model, query_locations, model_name="transposer", mode='dependency', save_img=True,
-                                threshold=0.0)
+                                threshold=0.1, outinfo=(out_dir, idx_name))
+    
+    image1 = dataset.getOriginalImage(idx)
+    cv2.imwrite(out_dir+str(idx_name)+"_original_img.jpg", image1)
 
-
-#test(dataset[0][1])
+for x in range(1001,4000, 71):
+    try:
+        test(dataset, x)    
+    except: 
+        continue
