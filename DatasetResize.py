@@ -1,16 +1,4 @@
-import torchvision.transforms as T
-import matplotlib.pyplot as plt
-import random
-from PIL import Image
-from torch.utils.data import Dataset, DataLoader
-from torch import nn
-import os
-import torch
-import cv2
-import numpy as np
-import json
-
-
+import os, cv2, json
 
 
 def getfilename(file_id):
