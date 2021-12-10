@@ -75,7 +75,6 @@ def plot_poses(img, skeletons, config=plt_config("coco"), save_path=None, datase
 			polygon = cv2.ellipse2Poly((int(mY), int(mX)), (int(length / 2), stickwidth), int(angle), 0, 360, 1)
 			cv2.fillConvexPoly(cur_canvas, polygon, color)
 			canvas = cv2.addWeighted(canvas, 0.4, cur_canvas, 0.6, 0)
-
 	return canvas
 
 
