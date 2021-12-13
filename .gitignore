@@ -152,12 +152,12 @@ $RECYCLE.BIN/
 # Custom Dir
 /data/
 /out/
-
-
-# End of https://www.toptal.com/developers/gitignore/api/pycharm,windows,linux
 /.idea/.gitignore
 /.idea/misc.xml
 /.idea/modules.xml
 /.idea/inspectionProfiles/profiles_settings.xml
 /.idea/vcs.xml
 /.idea/YogaPose.iml
+
+
+# End of https://www.toptal.com/developers/gitignore/api/pycharm,windows,linux
