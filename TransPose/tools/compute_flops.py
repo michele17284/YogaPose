@@ -79,7 +79,7 @@ for idx in range(100):
     img, _, _, _ = dataset[idx]
     images.append(img)
 
-device = torch.device('cpu')
+device = torch.device('cuda')
 results = {}
 _name = file_name.split('.')[-2]
 

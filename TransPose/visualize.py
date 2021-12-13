@@ -92,7 +92,7 @@ def add_path(path):
 
 def inspect_atten_map_by_locations(
 
-		image, model, query_locations, model_name="transposer", mode="dependency", threshold=None, device=torch.device("cpu"), kpt_color="white", img_name="image", save_img=False, outinfo=None, ):
+		image, model, query_locations, model_name="transposer", mode="dependency", threshold=None, device=torch.device("cuda"), kpt_color="white", img_name="image", save_img=False, outinfo=None, ):
 	r"""
 	Visualize the attention maps in all of attention layers
 	Args:
@@ -185,5 +185,5 @@ def inspect_atten_map_by_locations(
 	cb.set_ticks([0.0, 0.5, 1])
 	cb.ax.tick_params(labelsize=20)
 	if save_img:
-		plt.savefig("{}{}_attention_map_{}_{}_{}.jpg".format(outinfo[0], outinfo[1], img_name, mode, model_name))
+		plt.savefig("{}/{}_attention_map_{}_{}_{}.jpg".format(outinfo[0], outinfo[1], img_name, mode, model_name))
 	plt.show()
