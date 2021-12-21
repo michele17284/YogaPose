@@ -30,4 +30,4 @@ def split(root, percentage=0.9, outdir=""):
 			copy(src, dst)
 
 
-split("./data/images", outdir="./data/split")
+#split("./data/images", outdir="./data/split")
