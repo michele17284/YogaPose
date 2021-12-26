@@ -1,7 +1,7 @@
 # YogaPose
 
 ## Introduction
-Yoga pose is [...]
+Yoga Pose means' is to determine which yogapose the subject is performing based on an image.
 
 ### Data Preparation
 Run the script [./get_dataset.sh](https://github.com/michele17284/YogaPose/blob/master/get_dataset.sh). After completion you should get this data configuration. Feel free to interchange the examples images as long as the directory tree remains the same.
