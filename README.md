@@ -32,4 +32,4 @@ Models_logs: [GoogleDrive](https://drive.google.com/file/d/1IM2KJl265Tpm-IekxzuA
 
 ### Acknowledgements
 
-Great thanks for this paper and his open-source codes：[TransPose](https://github.com/yangsenius/TransPose)
+Great thanks for this paper and his open-source code：[TransPose](https://github.com/yangsenius/TransPose)
